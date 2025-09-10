@@ -1,55 +1,94 @@
-Project Proposal: Disaster Damage Project
-(DDP)
-Problem Statement and Motivation
-After a major disaster, responders urgently need to know which buildings are safe, damaged, or
-destroyed. Field surveys are slow, dangerous, and resource-intensive, often taking days when
-decisions are needed in hours. Satellite imagery is available rapidly, but raw pre- and post-event
-photos are not directly actionable. Human analysts can interpret imagery, but scaling this work is
-difficult during emergencies.
-The gap is a tool that can automatically convert pre- and post-disaster satellite image pairs into
-actionable, building-level assessments. A successful system should assign each building a
-damage category (no, minor, major, destroyed), provide calibrated confidence scores, and
-present the results in an intuitive map interface. This would allow emergency managers to
-quickly filter for high-risk buildings, generate inspection queues, and download results for use in
-planning.
-Our project will build a small end-to-end prototype. The core deliverable is an image-only model
-trained on public xView2 data, paired with a minimal Streamlit application where users can
-interact with predictions on a map. We will focus on calibration and interpretability so that the
-system produces not only predictions but also confidence measures and visual explanations.
-Related Work
-● xBD / xView2 Dataset: Gupta et al. (CVPRW 2019) introduced the xBD dataset, which
-contains paired pre- and post-disaster imagery with building polygons and four ordinal
-damage labels. It has become the benchmark for automated disaster damage
-assessment and enables event-level splits for testing generalization.
-● Siamese Networks for Change Detection: Daudt et al. (ICIP 2018) demonstrated that
-Siamese architectures with shared encoders improve classification on paired imagery
-tasks. This approach is widely used in xView2 baselines and provides a practical
-foundation for our prototype.
-● CrisisMMD: Alam et al. (ICWSM 2018) released a dataset of disaster-related tweets
-labeled for information type. While our MVP is image-only, this motivates a stretch goal:
-experimenting with simple text fusion to re-rank ambiguous predictions using social
-media signals.
-Initial Hypotheses
-● H1. A simple image-only Siamese ResNet-18 will achieve macro-F1 ≥ 0.60 on a held-out
-event split, with most confusions occurring between minor and major damage classes.
-● H2. Applying temperature scaling to model logits will reduce Expected Calibration Error
-(ECE) by at least 30% compared to the uncalibrated baseline, resulting in more reliable
-thresholding in the demo app.
-● H3 (Stretch). Adding a lightweight re-ranking step with tweet embeddings for one event
-will improve Top-K recall for the most severe damage categories.
-Goals and Scope
-● Data Preparation: Generate 224–256 px chips centered on building footprints from
-xView2. Split by event to avoid leakage and compute class balance.
-● Baseline Model: Train a Siamese ResNet-18 on pre/post chips using class-weighted
-cross-entropy and basic augmentations. Track per-class precision, recall, and F1.
-● Calibration & Explainability: Apply temperature scaling on validation logits and report
-calibration curves. Produce Grad-CAM overlays to highlight image regions that drive
-predictions.
-● Demo Application: Build a minimal Streamlit app with a Leafmap/Folium map. Users
-will see color-coded building polygons, select events, adjust a confidence slider, and
-click to view pre/post chips, predicted labels, and optional Grad-CAM overlays. Export
-buttons will allow CSV/GeoJSON downloads.
-● Stretch Goals (time permitting): Add an inspection queue sorted by severity ×
-confidence, and experiment with late fusion using tweet embeddings.
-● Out of Scope: No live satellite tasking or operational claims. The deliverable is a
-reproducible classroom prototype, not a production service.
+# Disaster Damage Project (DDP)
+
+Turn paired **pre** and **post** satellite images into **building-level damage labels** with **calibrated confidence**, then present the results on a clear, clickable map for triage.
+
+---
+
+## Problem statement and motivation
+After a disaster, teams need a fast view of which buildings are likely safe, damaged, or destroyed. Field surveys are slow and risky. Raw satellite images are not directly actionable. This project builds a compact pipeline that converts pre and post image pairs into building-level damage categories with usable confidence, and exposes the results in a simple map that non-technical users can navigate.
+
+---
+
+## Data and task
+- **Dataset**: xView2/xBD style pairs with building footprints and four labels: **no, minor, major, destroyed**  
+- **Chips**: small image crops (for example 256×256 px) centered on each building, taken from both **pre** and **post** images  
+- **Split**: by **event** to avoid leakage between train and test
+
+---
+
+## Approach (MVP)
+- **Model**: Siamese ResNet-18 on pre and post chips with shared weights  
+  - Combine features as `[f_pre, f_post, |f_pre − f_post|]`  
+  - Loss: class-weighted cross-entropy  
+  - Augmentations: flips, small rotations, light color jitter  
+- **Calibration**: temperature scaling on validation logits, report ECE and a calibration curve  
+- **Explainability**: Grad-CAM on the post branch for qualitative checks  
+- **Demo app**: Streamlit with Leafmap or Folium  
+  - Color-coded polygons, event selector, confidence threshold slider  
+  - On click: show pre and post chips, predicted label, confidence, optional Grad-CAM toggle  
+  - Exports: CSV and GeoJSON  
+  - Load **precomputed** predictions for 1 to 2 events so the app runs smoothly on a laptop
+
+---
+
+## Initial hypotheses and goals
+- **H1**: Image-only Siamese baseline reaches **macro-F1 ≥ 0.60** on a held-out event split. Most confusions are minor vs major.  
+- **H2**: Temperature scaling reduces Expected Calibration Error by **≥ 30%** relative to the uncalibrated model and yields steadier threshold behavior.  
+- **H3 (stretch)**: A light re-ranking with tweet embeddings improves Top-K recall for major and destroyed at K in {20, 50} on one event.
+
+**Success criteria**
+- Macro-F1 near or above 0.60 on held-out events  
+- Calibrated probabilities with predictable threshold behavior  
+- Clean demo app that runs locally with precomputed predictions
+
+---
+
+## Architecture overview
+
+    User
+      ↓
+    Streamlit Frontend (map + UI)
+      - event selector, threshold slider
+      - popup: pre/post chips, label, confidence, Grad-CAM toggle
+      ↓
+    Option A: direct Python call (simple local demo)
+      streamlit_app.py → infer.predict_batch()
+      → outputs/predictions/<event>/{predictions.csv, buildings.geojson}
+    
+    Option B: API boundary (optional)
+      streamlit_app.py → FastAPI /predict or /batch
+                        → Inference module (PyTorch)
+                        → returns GeoJSON + metrics JSON
+
+**Artifacts**
+- Model weights (.pt)  
+- Chips (PNG 224–256 px) in `data/chips/{pre,post}/`  
+- Index (parquet or csv) with paths, labels, coords, event_id  
+- GeoJSON polygons and predictions.csv for the app
+
+---
+
+
+## Quickstart (local demo with precomputed predictions)
+1. Create environment and install requirements  
+   `pip install -r requirements.txt`
+2. Generate chips and an index for one event  
+   `python ddp/etl/make_chips.py --event <EVENT_ID>`
+3. Train baseline and save checkpoint  
+   `python ddp/models/train.py --config experiments/exp001.yaml`
+4. Run batch inference to produce CSV and GeoJSON  
+   `python ddp/models/infer.py --event <EVENT_ID> --ckpt outputs/checkpoints/best.pt`
+5. Launch the app  
+   `streamlit run ddp/app/streamlit_app.py`
+
+---
+
+## Stretch (time permitting)
+- Inspection queue page ranked by severity × confidence  
+- Late-fusion re-ranker using tweet embeddings on a single event  
+- Small ablations: focal loss vs class-weighted CE, chip size sensitivity
+
+---
+
+## Out of scope
+No live satellite tasking, no production service, no operational claims. This is a reproducible classroom prototype.
