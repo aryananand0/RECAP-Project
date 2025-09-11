@@ -1,94 +1,25 @@
-# Disaster Damage Project (DDP)
+# RECAP: Rapid Event-level Classification of Affected Properties
+**Project Proposal**
 
-Turn paired **pre** and **post** satellite images into **building-level damage labels** with **calibrated confidence**, then present the results on a clear, clickable map for triage.
+## Problem Statement and Motivation
+After a major disaster, responders need a quick, trustworthy view of which buildings are safe, damaged, or destroyed. Field surveys are slow and risky, while raw satellite images are not directly actionable. The gap is a tool that converts paired pre- and post-disaster satellite images into building-level damage assessments with usable confidence.
 
----
+Our goal is to build a compact, end-to-end prototype. The system will train on the public xView2 dataset, predict one of four damage levels (no, minor, major, destroyed), calibrate probabilities for predictable thresholds, and present results on an interactive Streamlit map. For class demos, we will precompute predictions for one or two events so the interface runs smoothly on a standard laptop.
 
-## Problem statement and motivation
-After a disaster, teams need a fast view of which buildings are likely safe, damaged, or destroyed. Field surveys are slow and risky. Raw satellite images are not directly actionable. This project builds a compact pipeline that converts pre and post image pairs into building-level damage categories with usable confidence, and exposes the results in a simple map that non-technical users can navigate.
+## Related Work (brief)
+- **xBD / xView2**: Paired pre/post imagery with building polygons and ordinal damage labels; standard benchmark for automated building damage assessment (Gupta et al., CVPRW 2019).
+- **Siamese change detection**: Shared-encoder Siamese networks that learn from image pairs and are effective for change classification; a practical baseline for our task (Daudt et al., ICIP 2018).
+- **CrisisMMD**: Disaster-related tweets with annotations; motivates an optional late-fusion re-ranker on top of image predictions (Alam et al., ICWSM 2018).
 
----
+## Initial Hypotheses
+- **H1**: A simple image-only Siamese ResNet-18 will achieve macro-F1 ≥ 0.60 on held-out events; most errors will be confusions between “minor” and “major” damage.
+- **H2**: Temperature scaling will reduce Expected Calibration Error (ECE) by ≥ 30% compared to the uncalibrated baseline, producing steadier threshold behavior.
+- **H3 (Stretch)**: A lightweight re-ranking step using crisis tweet embeddings for one event will improve Top-K recall for “major” and “destroyed” classes.
 
-## Data and task
-- **Dataset**: xView2/xBD style pairs with building footprints and four labels: **no, minor, major, destroyed**  
-- **Chips**: small image crops (for example 256×256 px) centered on each building, taken from both **pre** and **post** images  
-- **Split**: by **event** to avoid leakage between train and test
-
----
-
-## Approach (MVP)
-- **Model**: Siamese ResNet-18 on pre and post chips with shared weights  
-  - Combine features as `[f_pre, f_post, |f_pre − f_post|]`  
-  - Loss: class-weighted cross-entropy  
-  - Augmentations: flips, small rotations, light color jitter  
-- **Calibration**: temperature scaling on validation logits, report ECE and a calibration curve  
-- **Explainability**: Grad-CAM on the post branch for qualitative checks  
-- **Demo app**: Streamlit with Leafmap or Folium  
-  - Color-coded polygons, event selector, confidence threshold slider  
-  - On click: show pre and post chips, predicted label, confidence, optional Grad-CAM toggle  
-  - Exports: CSV and GeoJSON  
-  - Load **precomputed** predictions for 1 to 2 events so the app runs smoothly on a laptop
-
----
-
-## Initial hypotheses and goals
-- **H1**: Image-only Siamese baseline reaches **macro-F1 ≥ 0.60** on a held-out event split. Most confusions are minor vs major.  
-- **H2**: Temperature scaling reduces Expected Calibration Error by **≥ 30%** relative to the uncalibrated model and yields steadier threshold behavior.  
-- **H3 (stretch)**: A light re-ranking with tweet embeddings improves Top-K recall for major and destroyed at K in {20, 50} on one event.
-
-**Success criteria**
-- Macro-F1 near or above 0.60 on held-out events  
-- Calibrated probabilities with predictable threshold behavior  
-- Clean demo app that runs locally with precomputed predictions
-
----
-
-## Architecture overview
-
-    User
-      ↓
-    Streamlit Frontend (map + UI)
-      - event selector, threshold slider
-      - popup: pre/post chips, label, confidence, Grad-CAM toggle
-      ↓
-    Option A: direct Python call (simple local demo)
-      streamlit_app.py → infer.predict_batch()
-      → outputs/predictions/<event>/{predictions.csv, buildings.geojson}
-    
-    Option B: API boundary (optional)
-      streamlit_app.py → FastAPI /predict or /batch
-                        → Inference module (PyTorch)
-                        → returns GeoJSON + metrics JSON
-
-**Artifacts**
-- Model weights (.pt)  
-- Chips (PNG 224–256 px) in `data/chips/{pre,post}/`  
-- Index (parquet or csv) with paths, labels, coords, event_id  
-- GeoJSON polygons and predictions.csv for the app
-
----
-
-
-## Quickstart (local demo with precomputed predictions)
-1. Create environment and install requirements  
-   `pip install -r requirements.txt`
-2. Generate chips and an index for one event  
-   `python ddp/etl/make_chips.py --event <EVENT_ID>`
-3. Train baseline and save checkpoint  
-   `python ddp/models/train.py --config experiments/exp001.yaml`
-4. Run batch inference to produce CSV and GeoJSON  
-   `python ddp/models/infer.py --event <EVENT_ID> --ckpt outputs/checkpoints/best.pt`
-5. Launch the app  
-   `streamlit run ddp/app/streamlit_app.py`
-
----
-
-## Stretch (time permitting)
-- Inspection queue page ranked by severity × confidence  
-- Late-fusion re-ranker using tweet embeddings on a single event  
-- Small ablations: focal loss vs class-weighted CE, chip size sensitivity
-
----
-
-## Out of scope
-No live satellite tasking, no production service, no operational claims. This is a reproducible classroom prototype.
+## Goals and Scope
+- **Data preparation**: Generate 224–256 px pre/post building chips. Split by event to prevent leakage and track class balance.
+- **Baseline model**: Train a Siamese ResNet-18 with class-weighted cross-entropy and basic augmentations; report per-class precision, recall, and F1.
+- **Calibration and explainability**: Apply temperature scaling; report calibration curves and ECE. Produce Grad-CAM overlays for qualitative inspection.
+- **Demo application**: Build a Streamlit map with color-coded buildings, event selector, and confidence slider. On click, show pre/post chips, predicted label, confidence, and optional Grad-CAM. Include CSV and GeoJSON export. Use precomputed predictions for smooth demos.
+- **Stretch goals (time permitting)**: Add an inspection queue ranked by severity × confidence. Explore tweet-based late fusion for one event.
+- **Out of scope**: No live satellite tasking or operational claims; this is a reproducible classroom prototype, not a production service.
