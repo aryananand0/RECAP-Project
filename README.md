@@ -23,7 +23,6 @@ RECAP is an end-to-end prototype that converts paired pre- and post-disaster sat
   - Preventing leakage with event-level train/test splits  
   - Calibrating confidence for predictable threshold behavior  
 
-⚠️ Note: Please do not include more than 3 bullet points per section.  
 
 ## Contribution  
 - [`Replication of existing work`]
