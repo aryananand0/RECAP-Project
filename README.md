@@ -1,25 +1,74 @@
-# RECAP: Rapid Event-level Classification of Affected Properties
-**Project Proposal**
+# Project Title  
+## RECAP: Rapid Event-level Classification of Affected Properties
 
-## Problem Statement and Motivation
-After a major disaster, responders need a quick, trustworthy view of which buildings are safe, damaged, or destroyed. Field surveys are slow and risky, while raw satellite images are not directly actionable. The gap is a tool that converts paired pre- and post-disaster satellite images into building-level damage assessments with usable confidence.
+## Group Info  
+- Aryan Anand  
+  - Email: asanand@email.sc.edu  
+- Sri Satishkumar  
+  - Email: satishks@email.sc.edu 
+- Yatin Raju  
+  - Email: bhupatir@email.sc.edu  
 
-Our goal is to build a compact, end-to-end prototype. The system will train on the public xView2 dataset, predict one of four damage levels (no, minor, major, destroyed), calibrate probabilities for predictable thresholds, and present results on an interactive Streamlit map. For class demos, we will precompute predictions for one or two events so the interface runs smoothly on a standard laptop.
+## Project Summary/Abstract  
+RECAP is an end-to-end prototype that converts paired pre- and post-disaster satellite images into building-level damage labels with calibrated confidence. The model is trained on the public xView2/xBD dataset and outputs four categories: no damage, minor, major, destroyed. Results are presented on a simple Streamlit map for quick situational awareness. For class demos, predictions will be precomputed for one or two events so the app runs smoothly on a standard laptop.
 
-## Related Work (brief)
-- **xBD / xView2**: Paired pre/post imagery with building polygons and ordinal damage labels; standard benchmark for automated building damage assessment (Gupta et al., CVPRW 2019).
-- **Siamese change detection**: Shared-encoder Siamese networks that learn from image pairs and are effective for change classification; a practical baseline for our task (Daudt et al., ICIP 2018).
-- **CrisisMMD**: Disaster-related tweets with annotations; motivates an optional late-fusion re-ranker on top of image predictions (Alam et al., ICWSM 2018).
+## Problem Description  
+- **Problem description (2–3 sentences):** After disasters, responders need a quick, trustworthy view of which buildings are safe, damaged, or destroyed. Field surveys are slow and risky, and raw satellite imagery is not directly actionable. We aim to automatically convert paired pre/post imagery into building-level assessments with usable confidence.  
+- **Motivation**  
+  - Faster triage: focus inspections where damage is most likely  
+  - Smarter resource use: guide shelters, supplies, and aid  
+  - Accessible tool: a clear map that non-experts can use  
+- **Challenges**  
+  - Class imbalance and label noise (minor vs major)  
+  - Preventing leakage with event-level train/test splits  
+  - Calibrating confidence for predictable threshold behavior  
 
-## Initial Hypotheses
-- **H1**: A simple image-only Siamese ResNet-18 will achieve macro-F1 ≥ 0.60 on held-out events; most errors will be confusions between “minor” and “major” damage.
-- **H2**: Temperature scaling will reduce Expected Calibration Error (ECE) by ≥ 30% compared to the uncalibrated baseline, producing steadier threshold behavior.
-- **H3 (Stretch)**: A lightweight re-ranking step using crisis tweet embeddings for one event will improve Top-K recall for “major” and “destroyed” classes.
+⚠️ Note: Please do not include more than 3 bullet points per section.  
 
-## Goals and Scope
-- **Data preparation**: Generate 224–256 px pre/post building chips. Split by event to prevent leakage and track class balance.
-- **Baseline model**: Train a Siamese ResNet-18 with class-weighted cross-entropy and basic augmentations; report per-class precision, recall, and F1.
-- **Calibration and explainability**: Apply temperature scaling; report calibration curves and ECE. Produce Grad-CAM overlays for qualitative inspection.
-- **Demo application**: Build a Streamlit map with color-coded buildings, event selector, and confidence slider. On click, show pre/post chips, predicted label, confidence, and optional Grad-CAM. Include CSV and GeoJSON export. Use precomputed predictions for smooth demos.
-- **Stretch goals (time permitting)**: Add an inspection queue ranked by severity × confidence. Explore tweet-based late fusion for one event.
-- **Out of scope**: No live satellite tasking or operational claims; this is a reproducible classroom prototype, not a production service.
+## Contribution  
+- [`Replication of existing work`]
+- [`Extension of existing work`]
+
+**Summary:** We will reproduce a standard Siamese CNN baseline on xView2/xBD, then extend it with probability calibration and a lightweight map UI.  
+- Contribution 1: Event-split training and evaluation with a Siamese ResNet-18 baseline (image-only)  
+- Contribution 2: Post-hoc calibration and an interactive Streamlit map with precomputed predictions  
+
+## References  
+### BibTeX of all references used in the project (will also be included as `references.bib`)
+
+@inproceedings{gupta2019xbd,  
+  title = {Creating xBD: A Dataset for Assessing Building Damage from Satellite Imagery},  
+  author = {Gupta, Rohit and Goodman, Benjamin and Patel, Nilesh and others},  
+  booktitle = {CVPR Workshops},  
+  year = {2019}  
+}
+
+@inproceedings{daudt2018siamese,  
+  title = {Fully Convolutional Siamese Networks for Change Detection},  
+  author = {Daudt, Rodrigo Caye and Le Saux, Bertrand and Boulch, Alexandre},  
+  booktitle = {IEEE ICIP},  
+  year = {2018}  
+}
+
+@inproceedings{alam2018crisismmd,  
+  title = {CrisisMMD: Multimodal Twitter Datasets from Natural Disasters},  
+  author = {Alam, Firoj and Ofli, Ferda and Imran, Muhammad},  
+  booktitle = {AAAI ICWSM},  
+  year = {2018}  
+}
+
+---
+
+# < The following is only applicable for the final project submission >  
+
+## Dependencies  
+None
+
+## Directory Structure  
+None
+
+## How to Run  
+None
+
+## Demo  
+None
